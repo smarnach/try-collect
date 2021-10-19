@@ -1,4 +1,6 @@
-use std::{error::Error, fmt};
+#![cfg_attr(not(feature = "std"), no_std)]
+
+use core::fmt;
 
 pub trait TryFromIterator<A>: Sized {
     type Error;
@@ -17,7 +19,8 @@ impl fmt::Display for NonMatchingLenError {
     }
 }
 
-impl Error for NonMatchingLenError {}
+#[cfg(feature = "std")]
+impl std::error::Error for NonMatchingLenError {}
 
 impl<A, const N: usize> TryFromIterator<A> for [A; N] {
     type Error = NonMatchingLenError;
@@ -52,7 +55,7 @@ pub trait IteratorExt: Iterator {
 impl<I: Iterator> IteratorExt for I {}
 
 mod partial_array {
-    use std::mem::MaybeUninit;
+    use core::mem::MaybeUninit;
 
     pub struct PartialArray<A, const N: usize> {
         array: [MaybeUninit<A>; N],
@@ -95,7 +98,7 @@ mod partial_array {
                 unsafe {
                     // We can't use `assume_init()`, since we don't have ownership of the values.
                     // We can't use `assume_init_drop()`, since it's unstable.
-                    std::ptr::drop_in_place(self.array[i].as_mut_ptr());
+                    core::ptr::drop_in_place(self.array[i].as_mut_ptr());
                 }
             }
         }
@@ -109,7 +112,7 @@ mod tests {
     use super::IteratorExt;
 
     fn try_collect_vec<const N: usize>() -> Result<[i32; N], NonMatchingLenError> {
-        vec![1, 2, 3].into_iter().try_collect()
+        IntoIterator::into_iter([1, 2, 3]).try_collect()
     }
 
     #[test]
