@@ -84,7 +84,7 @@ mod partial_array {
         }
 
         pub fn into_array(self) -> [A; N] {
-            assert!(self.len == N, "PartialArray not yet fully initialized.");
+            assert!(self.full(), "PartialArray not yet fully initialized.");
             // Converting to an array is safe since we initialized all values.
             // We can't transmute const generic arrays, so we have to convert pointers.
             // We can't use array_assume_int() because it is unstable.
@@ -107,26 +107,44 @@ mod partial_array {
 
 #[cfg(test)]
 mod tests {
-    use crate::NonMatchingLenError;
+    use crate::{NonMatchingLenError, TryCollect};
 
-    use super::TryCollect;
+    use crate::partial_array::PartialArray;
 
-    fn try_collect_vec<const N: usize>() -> Result<[i32; N], NonMatchingLenError> {
+    fn try_collect_common<const N: usize>() -> Result<[i32; N], NonMatchingLenError> {
         IntoIterator::into_iter([1, 2, 3]).try_collect()
     }
 
     #[test]
     fn try_collect_array() {
-        assert_eq!(try_collect_vec::<3>().unwrap(), [1, 2, 3]);
+        assert_eq!(try_collect_common::<3>().unwrap(), [1, 2, 3]);
     }
 
     #[test]
     fn try_collect_array_too_short() {
-        assert!(try_collect_vec::<2>().is_err());
+        assert!(try_collect_common::<2>().is_err());
     }
 
     #[test]
     fn try_collect_array_too_long() {
-        assert!(try_collect_vec::<4>().is_err());
+        assert!(try_collect_common::<4>().is_err());
+    }
+
+    #[test]
+    #[should_panic]
+    fn partial_array_not_full() {
+        let mut partial = PartialArray::<i32, 3>::new();
+        partial.push(1);
+        partial.push(2);
+        partial.into_array();
+    }
+
+    #[test]
+    #[should_panic]
+    fn partial_array_too_full() {
+        let mut partial = PartialArray::<i32, 2>::new();
+        partial.push(1);
+        partial.push(2);
+        partial.push(3);
     }
 }
