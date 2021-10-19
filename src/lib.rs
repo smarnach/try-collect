@@ -42,7 +42,7 @@ impl<A, const N: usize> TryFromIterator<A> for [A; N] {
     }
 }
 
-pub trait IteratorExt: Iterator {
+pub trait TryCollect: Iterator {
     fn try_collect<B>(self) -> Result<B, B::Error>
     where
         B: TryFromIterator<Self::Item>,
@@ -52,7 +52,7 @@ pub trait IteratorExt: Iterator {
     }
 }
 
-impl<I: Iterator> IteratorExt for I {}
+impl<I: Iterator> TryCollect for I {}
 
 mod partial_array {
     use core::mem::MaybeUninit;
@@ -109,7 +109,7 @@ mod partial_array {
 mod tests {
     use crate::NonMatchingLenError;
 
-    use super::IteratorExt;
+    use super::TryCollect;
 
     fn try_collect_vec<const N: usize>() -> Result<[i32; N], NonMatchingLenError> {
         IntoIterator::into_iter([1, 2, 3]).try_collect()
