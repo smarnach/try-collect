@@ -1,7 +1,7 @@
 [package]
 name = "try-collect"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 authors = ["Sven Marnach <sven@marnach.net>"]
 description = "A fallible trait to collect into fixed-size collections."
 license = "MIT OR Apache-2.0"
