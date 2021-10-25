@@ -88,7 +88,9 @@ mod partial_array {
             // Converting to an array is safe since we initialized all values.
             // We can't transmute const generic arrays, so we have to convert pointers.
             // We can't use array_assume_int() because it is unstable.
-            unsafe { (&self.array as *const _ as *const [A; N]).read() }
+            let array = unsafe { (&self.array as *const _ as *const [A; N]).read() };
+            core::mem::forget(self);
+            array
         }
     }
 
@@ -107,9 +109,10 @@ mod partial_array {
 
 #[cfg(test)]
 mod tests {
-    use crate::{NonMatchingLenError, TryCollect};
-
+    extern crate std;
     use crate::partial_array::PartialArray;
+    use crate::{NonMatchingLenError, TryCollect};
+    use std::{cell::RefCell, vec, vec::Vec};
 
     fn try_collect_common<const N: usize>() -> Result<[i32; N], NonMatchingLenError> {
         IntoIterator::into_iter([1, 2, 3]).try_collect()
@@ -146,5 +149,31 @@ mod tests {
         partial.push(1);
         partial.push(2);
         partial.push(3);
+    }
+
+    #[test]
+    fn partial_array_drop() {
+        let drop_log = RefCell::new(vec![]);
+        struct Guard<'a> {
+            index: usize,
+            log: &'a RefCell<Vec<usize>>,
+        }
+        impl Drop for Guard<'_> {
+            fn drop(&mut self) {
+                self.log.borrow_mut().push(self.index);
+            }
+        }
+        let guard = |i| Guard {
+            index: i,
+            log: &drop_log,
+        };
+        let mut partial = PartialArray::<Guard, 3>::new();
+        partial.push(guard(0));
+        partial.push(guard(1));
+        partial.push(guard(2));
+        let array = partial.into_array();
+        assert!(drop_log.borrow().is_empty());
+        drop(array);
+        assert_eq!(&*drop_log.borrow(), &[0, 1, 2]);
     }
 }
